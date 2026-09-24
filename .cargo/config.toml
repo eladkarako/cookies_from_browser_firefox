@@ -24,10 +24,15 @@ linker = 'C:/Users/Elad/AppData/Local/Android/Sdk/ndk/30.0.14904198/toolchains/l
 ar = 'C:/Users/Elad/AppData/Local/Android/Sdk/ndk/30.0.14904198/toolchains/llvm/prebuilt/windows-x86_64/bin/llvm-ar.exe'
 
 
-
 [env]
-CC_x86_64_linux_android = { value = 'C:\Users\Elad\AppData\Local\Android\Sdk\ndk\30.0.14904198\toolchains\llvm\prebuilt\windows-x86_64\bin\x86_64-linux-android21-clang.cmd', force = true }
-AR_x86_64_linux_android = { value = 'C:\Users\Elad\AppData\Local\Android\Sdk\ndk\30.0.14904198\toolchains\llvm\prebuilt\windows-x86_64\bin\llvm-ar.exe', force = true }
+CC_x86_64_linux_android     = { value = 'C:\Users\Elad\AppData\Local\Android\Sdk\ndk\30.0.14904198\toolchains\llvm\prebuilt\windows-x86_64\bin\x86_64-linux-android21-clang.cmd'      , force = true }
+CC_i686_linux_android       = { value = 'C:\Users\Elad\AppData\Local\Android\Sdk\ndk\30.0.14904198\toolchains\llvm\prebuilt\windows-x86_64\bin\i686-linux-android21-clang.cmd'        , force = true }
+CC_aarch64_linux_android    = { value = 'C:\Users\Elad\AppData\Local\Android\Sdk\ndk\30.0.14904198\toolchains\llvm\prebuilt\windows-x86_64\bin\aarch64-linux-android21-clang.cmd'     , force = true }
+CC_armv7_linux_androideabi  = { value = 'C:\Users\Elad\AppData\Local\Android\Sdk\ndk\30.0.14904198\toolchains\llvm\prebuilt\windows-x86_64\bin\armv7a-linux-androideabi21-clang.cmd'  , force = true }
+AR_x86_64_linux_android     = { value = 'C:\Users\Elad\AppData\Local\Android\Sdk\ndk\30.0.14904198\toolchains\llvm\prebuilt\windows-x86_64\bin\llvm-ar.exe'                           , force = true }
+AR_i686_linux_android       = { value = 'C:\Users\Elad\AppData\Local\Android\Sdk\ndk\30.0.14904198\toolchains\llvm\prebuilt\windows-x86_64\bin\llvm-ar.exe'                           , force = true }
+AR_aarch64_linux_android    = { value = 'C:\Users\Elad\AppData\Local\Android\Sdk\ndk\30.0.14904198\toolchains\llvm\prebuilt\windows-x86_64\bin\llvm-ar.exe'                           , force = true }
+AR_armv7_linux_androideabi  = { value = 'C:\Users\Elad\AppData\Local\Android\Sdk\ndk\30.0.14904198\toolchains\llvm\prebuilt\windows-x86_64\bin\llvm-ar.exe'                           , force = true }
 
 
 
