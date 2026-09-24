@@ -1,0 +1,32 @@
+[package]
+name = "cookies_from_browser_firefox"
+version = "26.9.24"
+edition = "2024"
+authors = ["Elad Karako <eladkarako@gmail.com>"]
+description = "parallel reads a compatible cookies.sqlite, or a Netscape cookie-file, optionally filters, sorts by host path and cookie name, outputs a Netscape cookie-file (tab separated text) to STDOUT"
+license = "MIT"
+repository = "https://github.com/eladkarako/cookies_from_browser_firefox"
+homepage = "https://github.com/eladkarako/cookies_from_browser_firefox"
+keywords = ["sqlite", "tsv", "netscape", "cookies", "dump", "browser", "firefox", "cli"]
+categories = ["command-line-utilities", "database", "encoding"]
+readme = "README.md"
+
+[dependencies]
+clap = { version = "4.6.7", features = ["derive"] }
+anyhow = "1.0.104"
+rusqlite = { version = "0.40.2", features = ["bundled"] }
+tokio = { version = "1.53.1", features = ["rt-multi-thread", "macros"] }
+
+[build-dependencies]
+winres = "0.1.12"
+toml = "1.1.6"
+
+[profile.release]
+opt-level = "z"          # “z” = maximum size reduction (equivalent to -C opt-level=s)
+lto = true               # Link‑time optimisation
+codegen-units = 1        # Better optimisation (single codegen unit)
+panic = "abort"          # Remove unwinding tables
+debug = false            # No debug info
+strip = true             # Strip symbols (requires rustc 1.56+)
+rpath = false            # Don't embed runtime library paths
+incremental = false      # Disable incremental compilation (cleaner builds)
