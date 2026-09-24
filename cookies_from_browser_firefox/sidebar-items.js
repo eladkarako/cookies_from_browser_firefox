@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["InputType"],"fn":["append_field","count_rows","detect_input_type","filter_cookies","load_netscape_cookies","load_sqlite_cookies","main","open_readonly","parse_bool_field","read_sqlite_chunk","serialize_netscape","sort_cookies"],"struct":["Args","Cookie"]};
