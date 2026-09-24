@@ -56,7 +56,7 @@ set "ARGS=%ARGS% cargo build  --release  --target   powerpc-unknown-linux-gnu;"
 set "ARGS=%ARGS% cargo build  --release  --target   powerpc64-unknown-linux-gnu;"
 set "ARGS=%ARGS% cargo build  --release  --target   powerpc64le-unknown-linux-gnu;"
 
-call wsl bash -c "%ARGS%"
+call wsl bash -lc "%ARGS%"
 
 pause
 pause
