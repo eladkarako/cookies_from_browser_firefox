@@ -10,7 +10,7 @@ fast post-processing without opening a browser database.
 The program writes cookie data to `STDOUT`; diagnostic messages and processing
 statistics are written to `STDERR`.
 
-<img src="screenshot_process.png" alt="Program process screenshot" />
+<img src="resources/screenshot_process.png" alt="Program process screenshot" />
 
 Online documentation:
 
