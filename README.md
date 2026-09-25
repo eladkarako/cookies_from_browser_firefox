@@ -1,127 +1,543 @@
-<h3><img width="48" src="resources/app.png" /> <code>cookies_from_browser_firefox</code></h3>
+<h3><img width="48" src="resources/app.png" alt="Application icon" /> <code>cookies_from_browser_firefox</code></h3>
+
+A small Rust command-line utility for extracting Firefox cookies from
+`cookies.sqlite`, filtering them, sorting them, and writing the result as a
+Netscape-format cookie file.
+
+It can also read an existing Netscape cookie file, which makes it useful for
+fast post-processing without opening a browser database.
+
+The program writes cookie data to `STDOUT`; diagnostic messages and processing
+statistics are written to `STDERR`.
+
+<img src="screenshot_process.png" alt="Program process screenshot" />
+
+Online documentation:
+
+<https://eladkarako.github.io/cookies_from_browser_firefox/>
+
+### What it does
+
+The program:
+
+- Detects whether the input is SQLite or Netscape text format.
+- Reads Firefox's `moz_cookies` table.
+- Uses multiple blocking worker threads for SQLite extraction.
+- Applies include and exclude filters.
+- Removes expired cookies when requested.
+- Sorts cookies by host, path, and cookie name.
+- Writes a Netscape-compatible cookie file to `STDOUT`.
+- Preserves `Secure` and `HttpOnly` information.
+- Escapes tabs, line feeds, and carriage returns in output fields.
+
+### Input formats
 
 The input can be either:
-- a firefox `cookies.sqlite` database (or a compatible sqlite file, `moz_cookies` table and `host`, `path`, `isSecure`, `isHttpOnly`, `expiry`, `name`, `value` columns).
-- a `Netscape`-format cookie text file.
 
-note:  
-The input type is detected from the first `16` bytes.  
-SQLite databases begin with `SQLite format 3\0`  
-all other files are treated as text-based `Netscape` cookie files.
+- A Firefox `cookies.sqlite` database, or another compatible SQLite database
+  containing a `moz_cookies` table with these columns:
 
-output is always written in `Netscape` cookie-file format.
-
-
-<img src="screenshot_process.png" />
-
-<hr/>
-
-online docs. : https://eladkarako.github.io/cookies_from_browser_firefox/  
-
-<hr/>
-
-### yt-dlp
-
-this program can be used instead of `yt-dlp`'s `--cookies-from-browser`,  
-just for Firefox with an explicit path to the `cookies.sqlite`,  
-
-the result text content, when written to file, can be used with `yt-dlp`'s `--cookies` .
-
-you can keep just the host names you actually need by providing (for example)
-`--include=google` `--include=youtube`
-
-you can also pass through an already exported file just for filtering.  
-
-so you won't need to use grep or stuff such as 
-
-```cmd
-set FILTER=/c:"^\.youtube" /c:"^\.google" /c:"^consent\.youtube" /c:"consent\.google"
-type "mycookies.txt" | findstr /i /r %FILTER%>>"%~sdp1%~n1_filtered.txt" >filtered_cookies.txt
+```text
+host
+path
+isSecure
+isHttpOnly
+expiry
+name
+value
 ```
 
-as it works extremely fast, and in parallel, it can save you few seconds as well as post-processing,  
-since you don't really need to hold all your browser's cookies in a file (that's not very secure..). 
+### A Netscape-format cookie text file.
 
-<hr/>
+The input type is detected by reading the first 16 bytes: `SQLite format 3\0`
 
-## Examples
+Files beginning with that SQLite signature are opened as SQLite databases.
+All other files are treated as Netscape cookie text files.
 
-<br/>
+Output is always written in Netscape cookie-file format.
 
-### process a firefox database without filters, this will have all cookies:
+### Basic usage (split for better readability)
 
-```
+```txt
 cookies_from_browser_firefox
---path "/path/to/cookies.sqlite"
+--path "C:\path\to\cookies.sqlite"
 > cookies.txt
 ```
 
-<hr/>
+The output can then be passed to another program that accepts Netscape cookie
 
-### include ONLY hosts containing either partial text of `example` or `mozilla` in the host name (not case-sensitive):
+### Practical usage stories
 
-```
-cookies_from_browser_firefox
---path cookies.sqlite
---include example
---include mozilla
-> filtered.txt
-```
+#### Export only the cookies needed by a downloader
 
-<hr/>
-
-### exclude hosts containing either `ads` or `tracker`:
+A complete browser cookie database may contain cookies for hundreds of sites.
+Use host filters to export only the relevant records:
 
 ```
 cookies_from_browser_firefox
 --path cookies.sqlite
---exclude ads
---exclude tracker
-> filtered.txt
+--include-host "youtube.com"
+--include-host "google."
+> youtube-cookies.txt
 ```
 
-<hr/>
+The include filters are case-insensitive substring matches. The example keeps
+cookies whose host contains either `youtube.com` or `google.`
 
-### combine include and exclude filters:
+#### Filter an already exported cookie file
+
+The input does not have to be a Firefox database:
+
+```
+cookies_from_browser_firefox
+--path exported-cookies.txt
+--include-host example
+--exclude-cookie-name tracking
+> filtered-cookies.txt
+```
+
+This avoids needing separate `grep`, `findstr`, or similar post-processing commands.
+
+#### Remove expired cookies before exporting
 
 ```
 cookies_from_browser_firefox
 --path cookies.sqlite
---include example
---include test
---exclude ads
---exclude tracking
-> filtered.txt
+--exclude-expired
+> active-cookies.txt
 ```
 
+--exclude-expired without a value uses the current UTC time.
 
-<hr/>
+The explicit equivalent is:
 
-`Secure` and `HttpOnly` are handled independently:
+```
+cookies_from_browser_firefox
+--path cookies.sqlite
+--exclude-expired expired
+> active-cookies.txt
+```
+
+#### Keep only secure cookies
+
+```
+cookies_from_browser_firefox
+--path cookies.sqlite
+--include-is-secured
+> secure-cookies.txt
+```
+
+#### Remove subdomain cookies
+
+```
+cookies_from_browser_firefox
+--path cookies.sqlite
+--exclude-is-subdomain
+> host-only-cookies.txt
+```
+
+#### Filters - Text filters
+
+Text filters perform case-insensitive substring matching.  
+Available filters:  
+
+```
+--include-host TEXT
+--exclude-host TEXT
+
+--include-path TEXT
+--exclude-path TEXT
+
+--include-cookie-name TEXT
+--exclude-cookie-name TEXT
+
+--include-cookie-value TEXT
+--exclude-cookie-value TEXT
+```
+
+#### For example:
+
+```
+cookies_from_browser_firefox
+--path cookies.sqlite
+--include-host example
+--include-host mozilla
+> included.txt
+```
+
+Multiple include filters are combined with OR. A cookie is retained when it
+matches at least one include filter.
+
+Multiple exclude filters are also combined with OR. A cookie is removed when
+it matches at least one exclude filter.
+
+Include filtering is applied before exclude filtering. Therefore, a cookie
+that matches an include filter can still be removed by an exclude filter.
+
+Empty filter values are ignored.
+
+#### Filters - Boolean filters (no value)
+
+```
+--include-is-subdomain
+--exclude-is-subdomain
+
+--include-is-secured
+--exclude-is-secured
+```
+
+A cookie is considered a subdomain cookie when its host begins with `.` .
+
+A cookie is considered secured when its `Secure` field is enabled.
+
+Boolean include filters participate in the same `OR` group as the text include
+filters. For example:
+
+```
+cookies_from_browser_firefox
+--path cookies.sqlite
+--include-host example
+--include-is-secured
+> result.txt
+```
+
+This includes cookies whose host contains `example` or whose `Secure` flag is.
+
+#### Expiration filtering
+
+The expiration option accepts one or more references:
+
+```
+--exclude-expired
+--exclude-expired expired
+--exclude-expired dateYYYY...
+--exclude-expired epochSECONDS
+```
+
+When several expiration references are supplied, the oldest reference is used.
+
+Examples:
+
+```
+cookies_from_browser_firefox
+--path cookies.sqlite
+--exclude-expired expired
+```
+
+```
+cookies_from_browser_firefox
+--path cookies.sqlite
+--exclude-expired date2026
+```
+
+```
+cookies_from_browser_firefox
+--path cookies.sqlite
+--exclude-expired date202609251314
+```
+
+```
+cookies_from_browser_firefox
+--path cookies.sqlite
+--exclude-expired epoch1800230732
+```
+
+#### Dates are interpreted as UTC. Supported date formats are (Value - Meaning):  
+
+- `date2026`           - `2026-01-01T00:00:00Z`
+- `date202609`         - `2026-09-01T00:00:00Z`
+- `date20260925`       - `2026-09-25T00:00:00Z`
+- `date2026092513`     - `2026-09-25T13:00:00Z`
+- `date202609251314`   - `2026-09-25T13:14:00Z`
+- `date20260925131400` - `2026-09-25T13:14:00Z`
+
+Epoch values are interpreted as Unix timestamps in seconds. Values shorter than
+10 digits are left-padded with zeroes.  
+
+Cookies are excluded when: cookie expiry <= reference time .  
+
+Session cookies have an expiry value of `0`.  
+When expiration filtering is enabled,  
+they are treated as expired and excluded like ordinary timestamps.  
+The program reports the number of expired cookies and the number of session cookies removed.
+
+#### Netscape cookie format
+
+The output starts with a descriptive header and uses these fields:
+
+
+`domain<TAB>include_subdomains<TAB>path<TAB>secure<TAB>expiration<TAB>name<TAB>value`
+
+Example:
 
 `#HttpOnly_.example.com	TRUE	/	TRUE	1893456000	session	abc123`
 
-This record has:
+This record means:
+- `HttpOnly` is enabled because the domain begins with `#HttpOnly_` .
+- `include_subdomains` is `TRUE` because the domain begins with `.` .
+- `Secure` is enabled because the fourth field is `TRUE` .
+- The cookie expires at Unix timestamp `1893456000`.
 
-- `HttpOnly = true, from #HttpOnly_`
-- `Secure = true, from the fourth field`
-- `include_subdomains` = true, from the leading dot in `.example.com`
+`HttpOnly` and `Secure` are handled independently.
 
+Tabs, line feeds, and carriage returns inside fields are escaped as:
+
+- tab             - `%09`
+- line feed       - `%0A`
+- carriage return - `%0D`
+
+
+#### Sorting
+
+Before output, cookies are sorted by:
+
+1. Host, ignoring a leading `.` (for grouping purposes only, the actual host will still include any `.`) .
+2. Path .
+3. Cookie name.
+4. Original host.
+5. Cookie value.
+6. Expiration timestamp.
+7. Secure.
+8. HttpOnly.
+
+Ignoring the leading dot only affects sorting; the original host is preserved in the output.
+
+#### Firefox and yt-dlp
+
+This program can be used instead of `yt-dlp`'s browser-cookie extraction when
+working with Firefox and an explicit `cookies.sqlite` path.
+
+```
+cookies_from_browser_firefox
+--path cookies.sqlite
+--include-host youtube
+--include-host google
+--exclude-expired
+> yt-cookies.txt
+```
+
+Then use the generated file with:
+
+`yt-dlp --cookies yt-cookies.txt URL`
+
+Passing an already exported Netscape cookie file through the program is also
+supported, so the same filtering workflow can be used without reading a
+Firefox database.
+
+#### Processing model
+
+SQLite extraction uses Tokio's multi-thread runtime and several blocking
+worker tasks:
+
+- The database row count is obtained first.
+- The rows are divided between workers.
+- Each worker opens the database read-only and reads its assigned range.
+- The coordinating task waits for all workers.
+- Results are merged, filtered, sorted, and serialized.
+- Output is written to `STDOUT`.
+
+The SQLite database is opened with the bundled SQLite library from
+`rusqlite`, so an external SQLite installation is not required for normal
+builds.
+
+#### Exit codes
+
+```
+0  Success
+1  Reserved for internal errors and uncaught exceptions
+2  Invalid command-line syntax or invalid filter argument
+3  Invalid --exclude-expired date or epoch value
+4  Input file is missing, inaccessible, or not a regular file
+5  Malformed or unsupported Netscape input
+6  SQLite database, schema, or query error
+7  Output, write, or flush error
+8  Worker-task failure
+9  Invalid internal state
+```
+
+#### Build
+
+The project uses Rust 2024 edition.
+
+`cargo build --release`
+
+The optimized release profile enables:
+
+- Link-time optimization
+- A single code-generation unit
+- Panic aborts
+- Stripped symbols
+- Reduced binary size
+- Disabled incremental compilation
+
+For formatting:
+
+```
+cargo fmt -- --check
+cargo fmt
+```
+
+For documentation:
+
+```
+cargo doc --no-deps --document-private-items --release --open
+```
 
 <hr/>
-<hr/>
+
+#### Complete `--help` entry
+
+```
+Usage: cookies_from_browser_firefox [OPTIONS] --path <PATH>
+
+Options:
+      --path <PATH>
+          Input cookies.sqlite database or Netscape cookie file
+
+      --include-host <TEXT>
+          Include cookies whose host contains TEXT
+
+      --exclude-host <TEXT>
+          Exclude cookies whose host contains TEXT
+
+      --include-path <TEXT>
+          Include cookies whose path contains TEXT
+
+      --exclude-path <TEXT>
+          Exclude cookies whose path contains TEXT
+
+      --include-cookie-name <TEXT>
+          Include cookies whose name contains TEXT
+
+      --exclude-cookie-name <TEXT>
+          Exclude cookies whose name contains TEXT
+
+      --include-cookie-value <TEXT>
+          Include cookies whose value contains TEXT
+
+      --exclude-cookie-value <TEXT>
+          Exclude cookies whose value contains TEXT
+
+      --include-is-subdomain
+          Include cookies whose host begins with '.'
+
+      --exclude-is-subdomain
+          Exclude cookies whose host begins with '.'
+
+      --include-is-secured
+          Include cookies with the Secure flag enabled
+
+      --exclude-is-secured
+          Exclude cookies with the Secure flag enabled
+
+      --exclude-expired [<REFERENCE>]
+          Exclude cookies expired at the supplied UTC reference time
+
+  -h, --help
+          Print help
+
+  -V, --version
+          Print version
+
+Exit codes:
+  0  Success
+  1  Reserved for internal errors and uncaught exceptions
+  2  Invalid command-line syntax or invalid filter argument
+  3  Invalid --exclude-expired date or epoch value
+  4  Input file is missing, inaccessible, or not a regular file
+  5  Malformed or unsupported Netscape input
+  6  SQLite database, schema, or query error
+  7  Output, write, or flush error
+  8  Worker-task failure
+  9  Invalid internal state
+
+All dates and epochs are interpreted as UTC.
+
+Date examples:
+  date2026                  -> 2026-01-01T00:00:00Z
+  date202609                -> 2026-09-01T00:00:00Z
+  date20260925              -> 2026-09-25T00:00:00Z
+  date2026092513            -> 2026-09-25T13:00:00Z
+  date202609251314          -> 2026-09-25T13:14:00Z
+  date20260925131400        -> 2026-09-25T13:14:00Z
+
+--exclude-expired without a value, or with the value 'expired', uses
+the current UTC time.
+
+Session cookies with expiry 0 are treated like ordinary expiration
+timestamps and are excluded when --exclude-expired is used.
+
+Include filters are combined with OR. Exclude filters are combined
+with OR. Empty text filter values are ignored.
+```
+
 <hr/>
 
-- `tokio`-based, multi-reader, parallel extraction (multiple blocking worker threads).
-- waits for every worker to finish.
-- merges all records in the coordinating task.
-- sorts by `host` (ignoring a leading `.` just for sorting so similar hosts would be grouped together), then by `path`, then by  `name`.
-- outputs a plain text (`STDOUT`) compatible with netscape-format cookie file (ASCII safe).
-- adds a descriptive header.
+#### Build — semi-automatic
+
+`__01_build_releases.cmd` followed by `__02_repack_binary.cmd` builds and
+packages the single-file binaries. The packaging script requires `7z.exe` in
+the system `PATH`. `version.txt`, `changelog.txt`, `LICENSE` may be added manually.
+
+
+The first batch file also launches WSL and attempts to run the build commands.
+It tries to update everything, but OS-level toolchain dependencies must still
+be installed separately.
 
 <hr/>
 
-this tool was programmed with the assistance of two agent actually, CoPilot (lite), and Claude `Haiku 4.5`, and JetBrains RustRover community.  
+#### Build — manual
+
+```
+rustup update
+cargo clean
+```
+
+#### For Windows MSVC targets
+
+```
+rustup target add x86_64-pc-windows-msvc i686-pc-windows-msvc
+cargo build --release --target x86_64-pc-windows-msvc
+cargo build --release --target i686-pc-windows-msvc
+```
+
+Visual Studio Community with the C++ development workload is required for the
+Windows MSVC targets.
+
+The project may also contain configuration for Android and Linux targets.
+The paths in `.cargo/config.toml` are machine-specific and may need adjustment,
+especially for Android NDK and cross-compilation linkers.
+
+#### Linker notes
+
+`.cargo/config.toml` contains linker configuration and additional notes for
+cross-compilation.
+
+Depending on the target, the linker may need to be available in `PATH` or
+configured with an absolute path. Android builds require an Android NDK
+toolchain. Some Linux targets require additional GCC, musl, or cross-compilation packages.
+
+#### `Cargo.toml` release profile
+
+The release profile is configured to reduce binary size and remove unnecessary
+runtime information:
+
+```
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+debug = false
+strip = true
+incremental = false
+```
+
+#### Credits
+
+This program was developed with assistance from `GitHub (Microsoft) Copilot (lite)`, `Claude Haiku 4.5`, and `JetBrains' RustRover (Community license)`. 
+
+<hr/>
+
 
 <hr/>
 
@@ -170,12 +586,17 @@ cargo build  --release  --target   powerpc64le-unknown-linux-gnu
 
 `cargo doc --no-deps --document-private-items --release --open`  
 
+or run `__03_docs.cmd` which also copies a `.nojekyll` (to reduce github's template engine post upload work to zero), root `favicon.ico`, and 'redirect' index.html (from `/resources`) to help the landing page on `doc` folder be shared more easily (it redirects hard-coded to projects' `index.html`).
+
 ### code format
 
 `rustfmt.toml` in the project's root 
 - to just check use `cargo fmt -- --check` to just check.
 - to auto-format use `cargo fmt`
 - `rustfmt --print-config default` to see all default.  
+
+or run `__00_format.cmd`
+
 
 ### linker notes
 
@@ -195,7 +616,7 @@ and trying to reduce the binary size by omitting stuff that were not used.
 <br/>
 
 
-Feel free to open an issue or ask a question.
+Feel free to open an issue, or ask a question.
 
 <a href="https://paypal.me/31adkarak0" target="_blank" rel="noopener noreferrer">
   <img src="https://img.shields.io/badge/Sponsor-Donate-blue?logo=paypal&style=flat" alt="Donate via PayPal">
