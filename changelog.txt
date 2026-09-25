@@ -1,2 +1,8 @@
+26.9.25
++ renaming argument `--include` to `--include-host` etc.. as well as include/exclude based on few other properties of cookies. suchas expired date or not. use allowed to specify dates in yyyymmddhhmmss or epoch all times are UTC.  
+* improving `--help` coverage and reporting, exit-codes cases are larger.  
+* max parallelizm is one less than max, and limited to 1-8.
+* filters are applied, the sorting applied before output.
+
 26.9.24
 + initial (previous revisions were unversioned).
