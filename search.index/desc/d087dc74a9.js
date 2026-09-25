@@ -1,0 +1,1 @@
+rd_("AoReturns the argument unchanged.00000BaCalls <code>U::from(self)</code>.00000")
