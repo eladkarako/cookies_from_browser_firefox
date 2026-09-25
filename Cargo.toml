@@ -1,13 +1,13 @@
 [package]
 name = "cookies_from_browser_firefox"
-version = "26.9.24"
+version = "26.9.25"
 edition = "2024"
 authors = ["Elad Karako <eladkarako@gmail.com>"]
 description = "parallel reads a compatible cookies.sqlite, or a Netscape cookie-file, optionally filters, sorts by host path and cookie name, outputs a Netscape cookie-file (tab separated text) to STDOUT"
 license = "MIT"
 repository = "https://github.com/eladkarako/cookies_from_browser_firefox"
 homepage = "https://github.com/eladkarako/cookies_from_browser_firefox"
-keywords = ["sqlite", "tsv", "netscape", "cookies", "dump", "browser", "firefox", "cli"]
+keywords = ["sqlite", "tsv", "cookies", "firefox", "cli"]
 categories = ["command-line-utilities", "database", "encoding"]
 readme = "README.md"
 
@@ -16,6 +16,7 @@ clap = { version = "4.6.7", features = ["derive"] }
 anyhow = "1.0.104"
 rusqlite = { version = "0.40.2", features = ["bundled"] }
 tokio = { version = "1.53.1", features = ["rt-multi-thread", "macros"] }
+chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
 
 [build-dependencies]
 winres = "0.1.12"
